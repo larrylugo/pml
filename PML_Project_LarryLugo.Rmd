@@ -1,0 +1,124 @@
+---
+title: "Practical Machine Learning Course"
+subtitle: "Project Activity Recognition Analysis" 
+author: "Larry Lugo"
+date: "August, 2015"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    theme: united
+    highlight: tango
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
+---
+
+## Introduction and background
+Nowadays, using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is possible to collect a large amount of data about personal activity relatively inexpensively. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+The goal of this project is to predict the manner in which 6 participants did the exercise. This document describes the process analysis applied.
+
+## Data Source and Description
+The data for this project comes from this [source](http://groupware.les.inf.puc-rio.br/har) and includes information collected by accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways (please see the section on the Weight Lifting Exercise Dataset). 
+These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health.
+
+## Process Analysis
+
+### Exploring and Cleaning Data
+The first step is to explore the data, in particular for missing values (NAs). A minimum threshold of 75% of complete data to retain a variable (column) was established in the whole training set of values. If were smaller, it was removed:
+
+```{r exploring}
+#Set working directory
+setwd('C:/Users/Larry/DataScience-Coursera/PracticalMachineLearning/Project')
+#Read training csv file and delete first row with columns' name
+raw.pml.train <- read.csv('pml-training.csv', header=TRUE, sep=",", na.strings=c("NA",""))
+raw.pml.train <- raw.pml.train[,-1]
+#Columns with data < 75%
+tot.col.nas.train <- sum((colSums(!is.na(raw.pml.train[,-ncol(raw.pml.train)])) < 0.75*nrow(raw.pml.train)))
+```
+A total of 'r tot.col.nas.train' columns have less than 75% complete values. So, they were deleted: 
+
+```{r cleaning}
+keep.cols <- c((colSums(!is.na(raw.pml.train [,-ncol(raw.pml.train )])) >= 0.75*nrow(raw.pml.train )))
+pml.train <- raw.pml.train[,keep.cols]
+```
+
+### Splitting Data for Cross Validation
+Using the standard procedures studied on course, data was divided into training (60%) and testing (40%):
+
+```{r splitting_data}
+set.seed(135)
+#Load required libraries
+library(lattice)
+library(ggplot2)
+library(caret)
+library(e1071)
+library(gbm)
+library(rattle)
+#Splitting data
+inTrain <- createDataPartition(y=pml.train$classe, p=0.6, list=FALSE)
+training <- pml.train[inTrain,]
+testing <- pml.train[-inTrain,]
+```
+
+### Fitting the model
+
+After evaluating several models and approaches, a **Stochastic Gradient Boosting** algorithm using R "gbm" package was selected. Only variables related with sensors on *arm*, *belt* and *dumbbell* were considered. The others like *timestamps*, *indices of data records*, etc. are not really useful for training the model, hence they were discarded. 
+
+```{r fitting_model}
+#Fitting the model using "gbm" method
+modFit <- train(classe ~ user_name + pitch_arm + yaw_arm + roll_arm + roll_belt + pitch_belt + yaw_belt + gyros_belt_x + gyros_belt_y + gyros_belt_z + accel_belt_x + accel_belt_y + accel_belt_z + magnet_belt_x + magnet_belt_y + magnet_belt_z + gyros_arm_x + gyros_arm_y + gyros_arm_z + accel_arm_x + accel_arm_y + accel_arm_z + magnet_arm_x + magnet_arm_y + magnet_arm_z + roll_dumbbell + pitch_dumbbell + yaw_dumbbell, method="gbm", data=training, verbose=FALSE)
+```
+
+```{r predict_Train}
+print(modFit)
+predictTrain <- predict(modFit,training)
+table(predictTrain, training$classe)
+```
+According to the latter results, the model clasified `r ((3157+2109+1895+1788+2098)/11776)*100` observations correctly in training set. A gradient boosted model with multinomial loss function.
+150 iterations were performed. There were 32 predictors of which 26 had non-zero influence, showing *roll_belt* and *yaw_belt* the main relative influence. 
+
+```{r plotting_mainVar}
+qplot(roll_belt,yaw_belt,color=classe,data=training)
+```
+Besides that, both variables are not enough to classify observations only by themselves, confirming that the **gbm** method was a right approach.
+
+On the other hand, using *Boosting Iterations* improves model's performance:
+
+```{r plotting_model}
+plot(modFit)
+```
+
+### Out of Sample Performance
+
+The out-of-sample performance of the fitted model was evaluated using the 40% sub-sample testing set, obtained from the cleaned (without NA's) training set:
+
+```{r sample_performance}
+predictTest <- predict(modFit,testing)
+```
+The algorithm correctly classified `r (7215/7846)*100` observations on the testing set, performing a little worse than the training set.
+
+## Predicting on the Test Set
+The final stage is to use the algorithm on the testing set (pml-testing.csv) containing the activities of 6 participants, in order to identify them as A, B, C, D or E, and generates the corresponding text files to be uploaded using the function "pml_write_files()" provided by course staff. 
+
+```{r predict_test}
+pml.testing <- read.csv('pml-testing.csv')
+answers <- as.character(predict(modFit, pml.testing))
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(answers)
+```
+
+## Conclusion
+As showed by the automatic correction of the assignment in the course site, a total of 20/20 right predictions for the type of activity was obtained, indicating that the algorithm's performance is very accurate.
+
+## References
+Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. 
+
+Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3jg5fqtvw
+
