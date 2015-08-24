@@ -36,7 +36,7 @@ raw.pml.train <- raw.pml.train[,-1]
 #Columns with data < 75%
 tot.col.nas.train <- sum((colSums(!is.na(raw.pml.train[,-ncol(raw.pml.train)])) < 0.75*nrow(raw.pml.train)))
 ```
-A total of 'r tot.col.nas.train' columns have less than 75% complete values. So, they were deleted: 
+A total of `r tot.col.nas.train` columns have less than 75% complete values. So, they were deleted: 
 
 ```{r cleaning}
 keep.cols <- c((colSums(!is.na(raw.pml.train [,-ncol(raw.pml.train )])) >= 0.75*nrow(raw.pml.train )))
@@ -75,7 +75,7 @@ print(modFit)
 predictTrain <- predict(modFit,training)
 table(predictTrain, training$classe)
 ```
-According to the latter results, the model clasified `r ((3157+2109+1895+1788+2098)/11776)*100` observations correctly in training set. A gradient boosted model with multinomial loss function.
+According to the latter results, the model clasified `r ((3157+2109+1895+1788+2098)/11776)*100` % of observations correctly in training set. A gradient boosted model with multinomial loss function.
 150 iterations were performed. There were 32 predictors of which 26 had non-zero influence, showing *roll_belt* and *yaw_belt* the main relative influence. 
 
 ```{r plotting_mainVar}
@@ -96,7 +96,7 @@ The out-of-sample performance of the fitted model was evaluated using the 40% su
 ```{r sample_performance}
 predictTest <- predict(modFit,testing)
 ```
-The algorithm correctly classified `r (7215/7846)*100` observations on the testing set, performing a little worse than the training set.
+The algorithm correctly classified `r (7215/7846)*100` % of observations on the testing set, performing a little worse than the training set.
 
 ## Predicting on the Test Set
 The final stage is to use the algorithm on the testing set (pml-testing.csv) containing the activities of 6 participants, in order to identify them as A, B, C, D or E, and generates the corresponding text files to be uploaded using the function "pml_write_files()" provided by course staff. 
@@ -115,7 +115,7 @@ pml_write_files(answers)
 ```
 
 ## Conclusion
-As showed by the automatic correction of the assignment in the course site, a total of 20/20 right predictions for the type of activity was obtained, indicating that the algorithm's performance is very accurate.
+As showed by the automatic correction of the assignment in the course site, a total of 20/20 (100%) right predictions for the type of activity was obtained, indicating that the algorithm's performance is very accurate.
 
 ## References
 Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. 
